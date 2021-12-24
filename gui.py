@@ -4,9 +4,7 @@ from random import random
 from collections import deque
 from copy import deepcopy
 
-
-lookup = {'v': 'Visited', 'e':'Empty', 'c':'Current', 's':'Start', 'b':'End', 'h':'Hurdle'}
-
+# This class maps the state of each grid to a char.
 class State():
     visited = "v"
     empty = "e"
@@ -15,14 +13,17 @@ class State():
     end = "b"
     hurdle = "h"
     path = "p"
+    reset = "r"
 
 
+# Co-ordinates for points on the grid.
 class Point():
     def __init__(self, x, y):
         self.x = x
         self.y = y
 
 
+#Initialize the board with default values. Users have the option to override the default values when the game starts.
 class Board():
     def __init__(self, hurdle_rate = 30, rows = 10, columns = 10, start :Point = Point(0, 0), end : Point = Point(9, 9)):
         self.rows = rows
@@ -35,10 +36,11 @@ class Board():
         self.board()
         self.add_hurdles()
 
+    #Initialize an empty board.
     def board(self):
         self.board = [[State.empty for _ in range(self.columns)] for _ in range(self.rows)]
 
-
+    #Auto-generate obstacles in the maze. The users define the hurdle rate.
     def add_hurdles(self):
         for row in range(self.rows):
             for column in range(self.columns):
@@ -47,17 +49,19 @@ class Board():
         self.board[self.start_x][self.start_y] = State.start
         self.board[self.end_x][self.end_y] = State.end
 
+#Initialize the GUI and the default color styles.
 class Maze():
     def __init__(self):
         self.main_window = Tk()
         self.main_window.geometry('1480x800')
+        self.main_window.title("DFS and BFS visualization")
         self.frame = Frame(self.main_window)
         self.frame.grid(row=0, column=0, sticky=N+S+W+E)
         self.initialize_styles()
         self.add_selection()
         self.main_window.mainloop()
 
-
+#Setup the board and fill it with start and end co-ordinates and obstacles.
     def setup_board(self, hurdle_rate, num_rows, num_cols, start_x, start_y, end_x, end_y):
         board = Board(hurdle_rate, num_rows, num_cols, Point(start_x, start_y), Point(end_x, end_y))
         self.board = deepcopy(board.board)
@@ -83,6 +87,7 @@ class Maze():
         display_btn = Button(self.new_frame, text="Run DFS", command= lambda: self.run_dfs())
         display_btn.grid(row=7, column=2)
 
+#Define the color styles to be used by different states(visited, empty etc.) in the board.
     def initialize_styles(self):
         style = Style()
         style.theme_use('classic')
@@ -93,19 +98,28 @@ class Maze():
         style.configure(State.end + ".TLabel", foreground="purple", background="yellow")
         style.configure(State.hurdle + ".TLabel", foreground="black", background="black")
         style.configure(State.path + ".TLabel", foreground="#538868", background="#538868")
+        style.configure(State.reset + ".TLabel", foreground="white", background="white")
         style.configure('w' + ".TLabel", foreground="ffe4c4", background="blue")
         style.configure('n' + ".TLabel", foreground="ffe4c4", background="#8dec61")
         style.configure(".TLabel", foreground="black", background="black")
 
+#Resets the board to the initial state.
+    def reset_board(self):
+        self.board = [[State.reset for _ in range(20)] for _ in range(20)]
+        self.label_box = [[Label(self.frame) for _ in range(20)] for _ in range(20)]
+        self.width = 1
+        self.height = 1
+        self.display_grids()
 
+#The function that packs the labels into the screen.
     def display_grids(self):
-        # self.frame.grid_forget()
         for row_idx, row in enumerate(self.board):
             for column_idx, column in enumerate(row):
                 label = self.label_box[row_idx][column_idx]
                 label.configure(style = column + ".TLabel")
                 label.grid(row=row_idx, column=column_idx, ipadx=self.width, ipady=self.height, sticky=N+S+E+W)
 
+#Displays the users landing page and takes in information about the board from them.
     def add_selection(self):
         self.new_frame = Frame(self.main_window)
         self.new_frame.grid(row=0, column=50)
@@ -170,10 +184,12 @@ class Maze():
         display_btn.grid(row=6, column=0, columnspan=2)
 
 
+#Helper function that checks whether the form collected from the user can form a valid grid. If not, displays error information.
     def check(self, hurdle_rate, num_rows, num_cols, start_x, start_y, end_x, end_y):
         if start_x < num_rows and end_x < num_rows and start_y < num_cols and end_y < num_cols:
             self.label_error.configure(text=" ")
             self.label_not_valid.configure(text=" ")
+            self.reset_board()
             self.setup_board(hurdle_rate, num_rows, num_cols, start_x-1, start_y-1, end_x, end_y)
             self.display_grids()
         else:
@@ -189,11 +205,15 @@ class Maze():
             error += " Please reconsider your co-ordinates again."
             self.label_error.configure(text=error)
 
+
+#Colors the visited cells to "p" and then packs them into the grid.
     def show_path(self):
         for x, y in self.all_paths:
             self.board[x][y] = "p"
         self.display_grids()
 
+
+#Initialize the board and empty the node stack. Call the dfs function.
     def run_dfs(self):
         self.board = deepcopy(self.duplicate_board)
         self.visited = deepcopy(self.visited_duplicate)
@@ -202,6 +222,7 @@ class Maze():
         self.all_paths = []
         self.dfs()
 
+#Recursive dfs function that records all the visited cells.
     def dfs(self):
         x_coor, y_coor = self.stack.pop()
 
@@ -211,10 +232,8 @@ class Maze():
             return
 
         self.visited[x_coor][y_coor] = True
-
         self.board[x_coor][y_coor] = 'v'
         self.display_grids()
-
         self.all_paths.append((x_coor, y_coor))
 
         for i in [[1,0], [0,1], [-1,0], [0,-1]]:
@@ -228,7 +247,7 @@ class Maze():
             self.label_not_valid.configure(text=error)
         self.frame.after(50, self.dfs)
 
-    
+#Initialize the board and empty the node stack. Call the bfs function.    
     def run_bfs(self):
         self.board = deepcopy(self.duplicate_board)
         self.visited = deepcopy(self.visited_duplicate)
@@ -237,6 +256,7 @@ class Maze():
         self.display_grids()
         self.bfs()
 
+#Call the bfs function.
     def bfs(self):
         x_coor, y_coor = self.dq.popleft()
         if x_coor == self.end_x and y_coor == self.end_y:
@@ -256,7 +276,7 @@ class Maze():
         if not self.dq:
             error="Hurdles in between start and end point"
             self.label_not_valid.configure(text=error)
-        self.frame.after(20, self.bfs)
+        self.frame.after(50, self.bfs)
 
-
-new_maze = Maze()
+if __name__ == "__main__":
+    new_maze = Maze()
